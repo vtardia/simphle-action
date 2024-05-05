@@ -1,0 +1,37 @@
+{
+    "name": "vtardia/simphle-action",
+    "description": "A simple PHP component to run tasks and background workers",
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Simphle\\Action\\": "src/",
+            "Simphle\\Action\\Tests\\": "tests/unit/"
+        }
+    },
+    "minimum-stability": "stable",
+    "require": {
+        "php": "^8.2",
+        "ext-json": "*",
+        "ext-pcntl": "*",
+        "ext-posix": "*",
+        "ext-amqp": "*",
+        "psr/log": "^3",
+        "psr/container": "^2",
+        "symfony/console": "^7",
+        "predis/predis": "^2"
+    },
+    "require-dev": {
+        "roave/security-advisories": "dev-latest",
+        "vimeo/psalm": "^6.x-dev",
+        "squizlabs/php_codesniffer": "^3",
+        "phpunit/phpunit": "^11"
+    },
+    "scripts": {
+        "cs:lint": "phpcs -p --standard=PSR12 --colors src tests/unit",
+        "cs:fix": "phpcbf -p --standard=PSR12 --colors src tests/unit",
+        "analyze": "psalm --no-cache",
+        "analyze:deep": "psalm --show-info=true --no-cache",
+        "test": "XDEBUG_MODE=debug,coverage phpunit"
+    }
+}
