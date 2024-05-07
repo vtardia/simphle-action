@@ -6,7 +6,7 @@ Simphle Action is a task-oriented library for PHP applications that provides:
  - a task scheduler, to run scheduled tasks within a cron facility;
  - a background worker to run tasks from a message queue.
 
-A task is a self-contained unit of work that can be as simple as "send a welcome email to use 123" or as complicated as "generate that super complex report for the management". You can also call it an action or an operation.
+A task is a self-contained unit of work that can be as simple as "send a welcome email to user 123" or as complicated as "generate that super complex report for the management". You can also call it an action or an operation.
 
 ## Install
 
@@ -148,5 +148,109 @@ while(/* ... */) {
     // catch exceptions, etc...
     
     // sleep, cleanup, etc...
+}
+```
+
+## Examples
+
+### Example of worker script
+
+```php
+#!/usr/bin/env php
+<?php
+
+declare(ticks = 1);
+
+require __DIR__ . '/path/to/your/init.php';
+
+use Symfony\Component\Console;
+use Symfony\Component\Console\Command\Command;
+use YourAppNamespace\Task\TaskFactory;
+use Simphle\Action\Worker;
+
+$terminate = false;
+
+$user = posix_getpwuid(posix_geteuid());
+pcntl_async_signals(true);
+
+$worker = new Console\Application('My Worker', '1.2.3');
+
+// Lazy load commands
+/** @var \Psr\Container\ContainerInterface $container */
+$commandLoader = new Console\CommandLoader\FactoryCommandLoader([
+    'run' => static function() use ($container, $user) {
+        return (new Worker\Command\Run(
+            $container,
+            new TaskFactory($container),
+            $user['name']
+        ))->setName('run');
+    },
+    'push' => static function() use ($container) {
+        return (new Worker\Command\Push($container))->setName('push');
+    }
+]);
+$worker->setCommandLoader($commandLoader);
+$worker->setCatchExceptions(false);
+try {
+    $worker->run();
+} catch (Throwable $e) {
+    $container->get('logger')->error($e->getMessage(), [
+        'line' => $e->getLine(),
+        'file' => $e->getFile(),
+    ]);
+    exit(Command::FAILURE);
+}
+```
+
+### Example of runner script
+
+```php
+#!/usr/bin/env php
+<?php
+
+declare(ticks = 1);
+
+require __DIR__ . '/path/to/your/init.php';
+
+use YourAppNamespace\Task\TaskFactory;
+use YourAppNamespace\Task\TestScheduledTaskService;
+use Symfony\Component\Console;
+use Symfony\Component\Console\Command\Command;
+use Simphle\Action\Runner;
+
+$terminate = false;
+
+$user = posix_getpwuid(posix_geteuid());
+pcntl_async_signals(true);
+
+$runner = new Console\Application('My Task Runner', '1.2.3');
+
+// Lazy load commands
+/** @var \Psr\Container\ContainerInterface $container */
+$commandLoader = new Console\CommandLoader\FactoryCommandLoader([
+    'task' => static function() use ($container, $user) {
+        return (new Runner\Command\Task(
+            $container,
+            new TaskFactory($container),
+            $user['name']
+        ))->setName('task');
+    },
+    'hello' => static function() use ($container) {
+        return (new Runner\Command\Hello($container))->setName('hello');
+    },
+    'scheduled' => static function() use ($container) {
+        return (new Runner\Command\Scheduled(
+            $container,
+            new TestScheduledTaskService($container->get('logger'))
+        ))->setName('scheduled');
+    }
+]);
+$runner->setCommandLoader($commandLoader);
+$runner->setCatchExceptions(false);
+try {
+    $runner->run();
+} catch (Throwable $e) {
+    echo $e->getMessage(), "\n";
+    exit(Command::FAILURE);
 }
 ```
